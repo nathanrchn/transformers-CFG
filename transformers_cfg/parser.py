@@ -5,8 +5,8 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-END_OF_ALTERNATE_MARKER = -1
-END_OF_RULE_MARKER = -2
+END_OF_ALTERNATE_MARKER = 0
+END_OF_RULE_MARKER = 0
 END_OF_GRAMMAR_MARKER = 0xFFFF
 TO_BE_FILLED_MARKER = 0
 REF_RULE_MARKER = 1
