@@ -5,8 +5,8 @@ from typing import List
 
 logger = logging.getLogger(__name__)
 
-END_OF_ALTERNATE_MARKER = 0
-END_OF_RULE_MARKER = 0
+END_OF_ALTERNATE_MARKER = -1
+END_OF_RULE_MARKER = -2
 END_OF_GRAMMAR_MARKER = 0xFFFF
 TO_BE_FILLED_MARKER = 0
 REF_RULE_MARKER = 1
@@ -26,6 +26,39 @@ class ParseState:
     def print(self, file=sys.stdout):
         print_grammar(file, self)
 
+    def graph(self, save_to: str = "grammar") -> None:
+        try:
+            from graphviz import Digraph
+        except ImportError:
+            raise RuntimeError("graphviz is not installed, please install it first by `pip install graphviz`")
+
+        graph = Digraph()
+        graph.node("-1", "epsilon")
+
+        for rule_name, rule_id in self.symbol_table.items():
+            graph.node(str(rule_id), rule_name)
+        
+        rule_encodings = break_grammar_into_rules(self.grammar_encoding)
+
+        for rule_encoding in rule_encodings:
+            rule_id = rule_encoding[0]
+            elements = break_rule_into_elements(rule_encoding)
+            for element in elements:
+                rule_length = element.pop(0) - 1
+                end_of_alternate = element.pop(-1)
+                assert end_of_alternate == END_OF_ALTERNATE_MARKER
+
+                if rule_length == 0:
+                    graph.edge(str(rule_id), "-1")
+
+                i = 0
+                while i < rule_length:
+                    if element[i] == REF_RULE_MARKER:
+                        ref_rule_id = element[i + 1]
+                        graph.edge(str(rule_id), str(ref_rule_id))
+                    i += 3 if element[i] == LITERAL_MARKER else 2
+
+        graph.render(save_to, format="png", cleanup=True)
 
 def get_symbol_id(state: ParseState, symbol_name: str) -> int:
     if symbol_name not in state.symbol_table:
@@ -542,3 +575,5 @@ if __name__ == "__main__":
     print(f"symbol_ids: \n{parsed_grammar.symbol_table}")
 
     start_rule_id = parsed_grammar.symbol_table["root"]
+
+    parsed_grammar.graph()
