@@ -27,6 +27,7 @@ class ParseState:
         print_grammar(file, self)
 
     def graph(self, save_to: str = "grammar") -> None:
+        # TODO: there is an error when computing the length of the [] rule => we do -1
         try:
             from graphviz import Digraph
         except ImportError:
