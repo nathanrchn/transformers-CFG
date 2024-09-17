@@ -1,7 +1,8 @@
 import argparse
 import logging
 import sys
-from typing import List
+from typing import Dict, List
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class ParseState:
                     i += 3 if element[i] == LITERAL_MARKER else 2
 
         graph.render(save_to, format="png", cleanup=True)
+
 
 def get_symbol_id(state: ParseState, symbol_name: str) -> int:
     if symbol_name not in state.symbol_table:
@@ -563,6 +565,58 @@ def print_grammar(file, state):
         )
 
 
+@dataclass
+class Node:
+    rule_id: int
+    childrens: List["Node"]
+    elements: List[int]
+
+
+def parse_grammar(state: ParseState) -> Node:
+    nodes: Dict[int, Node] = {
+        -1: Node(-1, [], []) # epsilon
+    }
+
+    for _, rule_id in state.symbol_table.items():
+        nodes[rule_id] = Node(rule_id, [], [])
+        
+    rule_encodings = break_grammar_into_rules(state.grammar_encoding)
+
+    for rule_encoding in rule_encodings:
+        rule_id = rule_encoding[0]
+        elements = break_rule_into_elements(rule_encoding)
+        for element in elements:
+            rule_length = element.pop(0) - 1
+            end_of_alternate = element.pop(-1)
+            assert end_of_alternate == END_OF_ALTERNATE_MARKER
+
+            if rule_length == 0:
+                nodes[rule_id].childrens.append(nodes[-1])
+            elif element[0] != REF_RULE_MARKER:
+                if element[0] == len(element) - 1:
+                    element.pop(0)
+                    rule_length -= 1
+
+                if element[0] + 1 < len(element) and element[element[0] + 1] == REF_RULE_MARKER:
+                    element.pop(0)
+                    rule_length -= 1
+
+            i = 0
+            while i < rule_length:
+                if element[i] == REF_RULE_MARKER:
+                    ref_rule_id = element[i + 1]
+                    nodes[rule_id].childrens.append(nodes[ref_rule_id])
+                    i += 2
+                elif element[i] == LITERAL_MARKER:
+                    nodes[rule_id].elements.extend(element[i + 1: i + 3])
+                    i += 3
+                else:
+                    nodes[rule_id].elements.extend(element[i: i + 2])
+                    i += 2
+
+    return nodes[state.symbol_table["root"]]
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Parse EBNF grammar files.")
@@ -585,3 +639,16 @@ if __name__ == "__main__":
     start_rule_id = parsed_grammar.symbol_table["root"]
 
     parsed_grammar.graph()
+
+    root = parse_grammar(parsed_grammar)
+
+    print(root)
+
+    def get_leftmost_node(node):
+        while node.childrens:
+            print(node.elements)
+            node = node.childrens[0]
+        return node
+
+    leftmost_node = get_leftmost_node(root)
+    print(leftmost_node.elements)
