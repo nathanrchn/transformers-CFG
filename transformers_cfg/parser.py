@@ -27,7 +27,6 @@ class ParseState:
         print_grammar(file, self)
 
     def graph(self, save_to: str = "grammar") -> None:
-        # TODO: there is an error when computing the length of the [] rule => we do -1
         try:
             from graphviz import Digraph
         except ImportError:
@@ -51,6 +50,14 @@ class ParseState:
 
                 if rule_length == 0:
                     graph.edge(str(rule_id), "-1")
+                elif element[0] != REF_RULE_MARKER:
+                    if element[0] == len(element) - 1:
+                        element.pop(0)
+                        rule_length -= 1
+
+                    if element[0] + 1 < len(element) and element[element[0] + 1] == REF_RULE_MARKER:
+                        element.pop(0)
+                        rule_length -= 1
 
                 i = 0
                 while i < rule_length:
