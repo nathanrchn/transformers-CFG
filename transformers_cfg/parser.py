@@ -638,17 +638,13 @@ if __name__ == "__main__":
 
     start_rule_id = parsed_grammar.symbol_table["root"]
 
+    import time
+
+    start_time = time.time()
     parsed_grammar.graph()
+    end_time = time.time()
+    print(f"Time taken to generate graph: {end_time - start_time} seconds")
 
     root = parse_grammar(parsed_grammar)
 
     print(root)
-
-    def get_leftmost_node(node):
-        while node.childrens:
-            print(node.elements)
-            node = node.childrens[0]
-        return node
-
-    leftmost_node = get_leftmost_node(root)
-    print(leftmost_node.elements)
